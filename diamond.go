@@ -2,10 +2,12 @@ package aliacm
 
 import (
 	"math/rand"
+	"reflect"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"errors"
 
+	"github.com/sirupsen/logrus"
 	"github.com/xiaojiaoyu100/cast"
 )
 
@@ -41,7 +43,7 @@ type Unit struct {
 	Group     string
 	DataID    string
 	FetchOnce bool
-	OnChange  Handler
+	Coll      []Observer
 	ch        chan Config
 }
 
@@ -60,11 +62,12 @@ type Config struct {
 
 // Diamond 提供了操作阿里云ACM的能力
 type Diamond struct {
-	option              Option
-	c                   *cast.Cast
-	units               []Unit
-	errHook             Hook
-	r                   *rand.Rand
+	option  Option
+	c       *cast.Cast
+	units   []Unit
+	errHook Hook
+	r       *rand.Rand
+	coll    map[info][]Observer
 }
 
 // New 产生Diamond实例
@@ -91,9 +94,10 @@ func New(addr, tenant, accessKey, secretKey string, setters ...Setter) (*Diamond
 	r := rand.New(s)
 
 	d := &Diamond{
-		option:       option,
-		c:            c,
-		r:            r,
+		option: option,
+		c:      c,
+		r:      r,
+		coll:   make(map[info][]Observer),
 	}
 
 	for _, setter := range setters {
@@ -109,10 +113,37 @@ func randomIntInRange(min, max int) int {
 	return rand.Intn(max-min) + min
 }
 
+func (d *Diamond) register(i info, o Observer) error {
+	if reflect.TypeOf(o).Kind() != reflect.Ptr {
+		return errors.New("type error")
+	}
+	d.coll[i] = append(d.coll[i], o)
+	return nil
+}
+
+func (d *Diamond) notify(unit Unit, config Config) {
+	i := info{
+		Group:  unit.Group,
+		DataID: unit.DataID,
+	}
+	for _, o := range d.coll[i] {
+		o.Modify(unit, config)
+	}
+}
+
 // Add 添加想要关心的配置单元
-func (d *Diamond) Add(unit Unit) {
+func (d *Diamond) Add(unit Unit) error {
 	unit.ch = make(chan Config)
 	d.units = append(d.units, unit)
+	for _, o := range unit.Coll {
+		i := info{
+			Group:  unit.Group,
+			DataID: unit.DataID,
+		}
+		if err := d.register(i, o); err != nil {
+			return err
+		}
+	}
 	var (
 		contentMD5 string
 	)
@@ -139,13 +170,14 @@ func (d *Diamond) Add(unit Unit) {
 				var err error
 				config.Content, err = GbkToUtf8(config.Content)
 				d.checkErr(unit, err)
-				unit.OnChange(config)
+				d.notify(unit, config)
 				if unit.FetchOnce {
 					return
 				}
 			}
 		}
 	}()
+	return nil
 }
 
 // SetHook 用于提醒关键错误
