@@ -121,7 +121,7 @@ func (d *Diamond) notify(unit Unit, config Config) {
 		DataID: unit.DataID,
 	}
 	for _, o := range d.coll[i] {
-		o.Modify(unit, config)
+		o.OnUpdate(unit, config)
 	}
 }
 

@@ -31,20 +31,20 @@ func (c Conf) IsEqual(conf Conf) bool {
 type UpdateUnits []UpdateUnit
 
 // 配置更新完毕后的回调函数
-type AfterUpdate func(UpdateUnits)
+type AfterUpdateHook func(UpdateUnits)
 
 type Observer struct {
-	AfterUpdate AfterUpdate
+	AfterUpdateHook AfterUpdateHook
 	confs       sync.Map
 }
 
 // 用来添加想要关心的配置
-func (o *Observer) AddUnit(uf Info) {
+func (o *Observer) AddInfo(uf Info) {
 	o.confs.LoadOrStore(uf, nil)
 }
 
 // ACM配置更新后的回调函数
-func (o *Observer) Modify(unit Unit, config Config) {
+func (o *Observer) OnUpdate(unit Unit, config Config) {
 	foundFlag := false
 	readFlag := true
 	var copyUnits UpdateUnits
@@ -79,7 +79,7 @@ func (o *Observer) Modify(unit Unit, config Config) {
 		return true
 	})
 
-	if readFlag && foundFlag && o.AfterUpdate != nil {
-		o.AfterUpdate(copyUnits)
+	if readFlag && foundFlag && o.AfterUpdateHook != nil {
+		o.AfterUpdateHook(copyUnits)
 	}
 }
