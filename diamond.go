@@ -2,10 +2,7 @@ package aliacm
 
 import (
 	"math/rand"
-	"reflect"
 	"time"
-
-	"errors"
 
 	"github.com/sirupsen/logrus"
 	"github.com/xiaojiaoyu100/cast"
@@ -67,7 +64,7 @@ type Diamond struct {
 	units   []Unit
 	errHook Hook
 	r       *rand.Rand
-	coll    map[info][]Observer
+	coll    map[Info][]Observer
 }
 
 // New 产生Diamond实例
@@ -97,7 +94,7 @@ func New(addr, tenant, accessKey, secretKey string, setters ...Setter) (*Diamond
 		option: option,
 		c:      c,
 		r:      r,
-		coll:   make(map[info][]Observer),
+		coll:   make(map[Info][]Observer),
 	}
 
 	for _, setter := range setters {
@@ -113,16 +110,13 @@ func randomIntInRange(min, max int) int {
 	return rand.Intn(max-min) + min
 }
 
-func (d *Diamond) register(i info, o Observer) error {
-	if reflect.TypeOf(o).Kind() != reflect.Ptr {
-		return errors.New("type error")
-	}
+func (d *Diamond) register(i Info, o Observer) error {
 	d.coll[i] = append(d.coll[i], o)
 	return nil
 }
 
 func (d *Diamond) notify(unit Unit, config Config) {
-	i := info{
+	i := Info{
 		Group:  unit.Group,
 		DataID: unit.DataID,
 	}
@@ -136,7 +130,7 @@ func (d *Diamond) Add(unit Unit) error {
 	unit.ch = make(chan Config)
 	d.units = append(d.units, unit)
 	for _, o := range unit.Coll {
-		i := info{
+		i := Info{
 			Group:  unit.Group,
 			DataID: unit.DataID,
 		}

@@ -1,6 +1,6 @@
 package aliacm
 
-type info struct {
+type Info struct {
 	Group  string
 	DataID string
 }
