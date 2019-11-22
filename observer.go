@@ -35,12 +35,20 @@ type AfterUpdateHook func(UpdateUnits)
 
 type Observer struct {
 	AfterUpdateHook AfterUpdateHook
-	confs       sync.Map
+	confs           sync.Map
+	infos           []Info
 }
 
 // 用来添加想要关心的配置
-func (o *Observer) AddInfo(uf Info) {
-	o.confs.LoadOrStore(uf, nil)
+func (o *Observer) AddInfo(ufs ...Info) {
+	for _, uf := range ufs {
+		o.confs.LoadOrStore(uf, nil)
+		o.infos = append(o.infos, uf)
+	}
+}
+
+func (o *Observer) Infos() []Info {
+	return o.infos[:]
 }
 
 // ACM配置更新后的回调函数
@@ -69,8 +77,8 @@ func (o *Observer) OnUpdate(unit Unit, config Config) {
 					value, ok := valueIf.(Conf)
 					if ok {
 						updateUnit := UpdateUnit{Conf: value}
-						updateUnit.Group = unit.Group
-						updateUnit.DataID = unit.DataID
+						updateUnit.Group = flag.Group
+						updateUnit.DataID = flag.DataID
 						copyUnits = append(copyUnits, updateUnit)
 					}
 				}
@@ -78,7 +86,6 @@ func (o *Observer) OnUpdate(unit Unit, config Config) {
 		}
 		return true
 	})
-
 	if readFlag && foundFlag && o.AfterUpdateHook != nil {
 		o.AfterUpdateHook(copyUnits)
 	}

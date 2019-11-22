@@ -40,8 +40,14 @@ type Unit struct {
 	Group     string
 	DataID    string
 	FetchOnce bool
-	Coll      []Observer
 	ch        chan Config
+}
+
+func (u *Unit) IsEqual(unit Unit) bool {
+	if u.Group == unit.Group && u.DataID == unit.DataID {
+		return true
+	}
+	return false
 }
 
 // Option 参数设置
@@ -110,9 +116,8 @@ func randomIntInRange(min, max int) int {
 	return rand.Intn(max-min) + min
 }
 
-func (d *Diamond) register(i Info, o Observer) error {
+func (d *Diamond) register(i Info, o Observer) {
 	d.coll[i] = append(d.coll[i], o)
-	return nil
 }
 
 func (d *Diamond) notify(unit Unit, config Config) {
@@ -120,24 +125,31 @@ func (d *Diamond) notify(unit Unit, config Config) {
 		Group:  unit.Group,
 		DataID: unit.DataID,
 	}
+
 	for _, o := range d.coll[i] {
 		o.OnUpdate(unit, config)
 	}
 }
 
-// Add 添加想要关心的配置单元
-func (d *Diamond) Add(unit Unit) error {
-	unit.ch = make(chan Config)
-	d.units = append(d.units, unit)
-	for _, o := range unit.Coll {
-		i := Info{
-			Group:  unit.Group,
-			DataID: unit.DataID,
-		}
-		if err := d.register(i, o); err != nil {
-			return err
+func (d *Diamond) AddObservers(obs ...Observer) {
+	for _, ob := range obs {
+		infos := ob.Infos()
+		for _, info := range infos {
+			d.register(info, ob)
 		}
 	}
+}
+
+// Add 添加想要关心的配置单元
+func (d *Diamond) AddUnit(unit Unit) error {
+	for _, u := range d.units {
+		if u.IsEqual(unit) {
+			return nil
+		}
+	}
+
+	unit.ch = make(chan Config)
+	d.units = append(d.units, unit)
 	var (
 		contentMD5 string
 	)
