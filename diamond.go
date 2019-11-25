@@ -44,10 +44,7 @@ type Unit struct {
 }
 
 func (u *Unit) IsEqual(unit Unit) bool {
-	if u.Group == unit.Group && u.DataID == unit.DataID {
-		return true
-	}
-	return false
+	return u.Group == unit.Group && u.DataID == unit.DataID
 }
 
 // Option 参数设置
@@ -60,6 +57,7 @@ type Option struct {
 
 // Config 返回配置
 type Config struct {
+	Info
 	Content []byte
 }
 
@@ -120,14 +118,14 @@ func (d *Diamond) register(i Info, o Observer) {
 	d.coll[i] = append(d.coll[i], o)
 }
 
-func (d *Diamond) notify(unit Unit, config Config) {
+func (d *Diamond) notify(config Config) {
 	i := Info{
-		Group:  unit.Group,
-		DataID: unit.DataID,
+		Group:  config.Group,
+		DataID: config.DataID,
 	}
 
 	for _, o := range d.coll[i] {
-		o.OnUpdate(unit, config)
+		o.OnUpdate(config)
 	}
 }
 
@@ -176,7 +174,7 @@ func (d *Diamond) AddUnit(unit Unit) error {
 				var err error
 				config.Content, err = GbkToUtf8(config.Content)
 				d.checkErr(unit, err)
-				d.notify(unit, config)
+				d.notify(config)
 				if unit.FetchOnce {
 					return
 				}
