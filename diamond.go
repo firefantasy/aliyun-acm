@@ -43,6 +43,7 @@ type Unit struct {
 	ch        chan Config
 }
 
+// IsEqual 根据Group，DataID判断unit是否相等
 func (u *Unit) IsEqual(unit Unit) bool {
 	return u.Group == unit.Group && u.DataID == unit.DataID
 }
@@ -129,6 +130,7 @@ func (d *Diamond) notify(config Config) {
 	}
 }
 
+// AddObservers 批量添加Observer
 func (d *Diamond) AddObservers(obs ...Observer) {
 	for _, ob := range obs {
 		infos := ob.Infos()
@@ -138,7 +140,7 @@ func (d *Diamond) AddObservers(obs ...Observer) {
 	}
 }
 
-// Add 添加想要关心的配置单元
+// AddUnit 添加想要关心的配置单元
 func (d *Diamond) AddUnit(unit Unit) error {
 	for _, u := range d.units {
 		if u.IsEqual(unit) {
